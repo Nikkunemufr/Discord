@@ -33,8 +33,7 @@ const rolesEmoji = {
     "HS":"🔫",
     "FDPS":"⚔️",
     "MH":"💊",
-    "FS":"🏥",
-    "unjoin":"❌"};
+    "FS":"🏥",};
 
 let channel_id;
 async function processCommand(receivedMessage) {
@@ -59,8 +58,7 @@ async function processCommand(receivedMessage) {
                 + rolesEmoji["HS"] + " pour Hitscan \n"
                 + rolesEmoji["FDPS"] + " pour Flex DPS \n"
                 + rolesEmoji["MH"] + " pour Main Heal \n"
-                + rolesEmoji["FS"] + " pour Flex Heal \n"
-                + "❌ pour te désinscrire \n")
+                + rolesEmoji["FS"] + " pour Flex Heal \n")
             .setThumbnail('https://stockagehelloassoprod.blob.core.windows.net/images/logos/teki%20esport-9c35cdda328c4c8b9965e517ac642c11.png')
             .setTimestamp()
             .setFooter('Réalisé par Nikkunēmu', "https://static-cdn.jtvnw.net/jtv_user_pictures/607e201c-2891-48ca-8208-c57336956dcc-profile_image-70x70.png");
@@ -72,7 +70,6 @@ async function processCommand(receivedMessage) {
         messageEmbed.react(rolesEmoji["FDPS"]);
         messageEmbed.react(rolesEmoji["MH"]);
         messageEmbed.react(rolesEmoji["FS"]);
-        messageEmbed.react("❌");
 
         client.on("messageReactionAdd", (reaction, user) => {
             const message = reaction.message;
@@ -80,8 +77,6 @@ async function processCommand(receivedMessage) {
             const emoji = reaction.emoji.name;
             const channel = message.guild.channels.cache.find(c => c.id === channel_id);
             if (member.user.bot) return;
-            console.log("pas de bot");
-            console.log(user);
             if (Object.values(rolesEmoji).includes(emoji) && message.channel.id === channel.id) {
                 switch (emoji) {
                     case rolesEmoji["MT"]:
@@ -102,8 +97,35 @@ async function processCommand(receivedMessage) {
                     case rolesEmoji["FS"]:
                         joinCommand(user, ["FS","1"], receivedMessage);
                         break;
-                    case rolesEmoji["unjoin"]:
-                        unjoinCommand(user, receivedMessage);
+                }
+            }
+        });
+
+        client.on("messageReactionRemove", (reaction, user) => {
+            const message = reaction.message;
+            const member = message.guild.members.cache.get(user.id);
+            const emoji = reaction.emoji.name;
+            const channel = message.guild.channels.cache.find(c => c.id === channel_id);
+            if (member.user.bot) return;
+            if (Object.values(rolesEmoji).includes(emoji) && message.channel.id === channel.id) {
+                switch (emoji) {
+                    case rolesEmoji["MT"]:
+                        unjoinCommand(user, ["MT","1"], receivedMessage);
+                        break;
+                    case rolesEmoji["OT"]:
+                        unjoinCommand(user, ["OT","1"], receivedMessage);
+                        break;
+                    case rolesEmoji["HS"]:
+                        unjoinCommand(user, ["HS","1"], receivedMessage);
+                        break;
+                    case rolesEmoji["FDPS"]:
+                        unjoinCommand(user, ["FDPS","1"], receivedMessage);
+                        break;
+                    case rolesEmoji["MH"]:
+                        unjoinCommand(user, ["MH","1"], receivedMessage);
+                        break;
+                    case rolesEmoji["FS"]:
+                        unjoinCommand(user, ["FS","1"], receivedMessage);
                         break;
                 }
             }
@@ -134,17 +156,10 @@ function getLength(json) {
     return length
 }
 
-function contains(json, key, value) {
-    let i = 0
-    if(getLength(json) < 1){
-        return -1
-    }
-    while (i<getLength(json)) {
-        if (json[i][key] == value)
-            return i
-        i++
-    }
-    return -1
+function contains(json, value) {
+    if(value in json)
+        return true;
+    return false;
 }
 
 function isInList(item, list) {
@@ -161,7 +176,6 @@ function roleAffichageJolie(listrole) {
     for (role in listrole) {
         tampon += rolesEmoji[listrole[role]]
     }
-    console.log(tampon);
     return tampon
 }
 
@@ -183,25 +197,21 @@ function helpCommand(sender, receivedMessage) {
 function joinCommand(sender, arguments, receivedMessage) {
     let length = getLength(dispo)
 
-    index = contains(dispo, "userID", sender.id)
-    console.log(index);
-    if (index == -1) {
-        dispo[length] = {
-            userID : sender.id,
+    isContains = contains(dispo, sender.id)
+    if (!isContains) {
+        dispo[sender.id] = {
             roles: [arguments[0]],
             blocs : [arguments[1]],
         }
     }
-    if (index != -1 && length > 0){
-        if(!(dispo[index]["roles"].includes(arguments[0].toUpperCase()))){
-            dispo[index]["roles"].push(arguments[0].toUpperCase())
+    if (isContains && length > 0){
+        if(!(dispo[sender.id]["roles"].includes(arguments[0]))){
+            dispo[sender.id]["roles"].push(arguments[0])
         }
-        if(!(dispo[index]["blocs"].includes(arguments[1]))){
-            dispo[index]["blocs"].push(arguments[1])
+        if(!(dispo[sender.id]["blocs"].includes(arguments[1]))){
+            dispo[sender.id]["blocs"].push(arguments[1])
         }
     }
-    if (index == -1)
-        index = length
     fs.writeFile('./dispo.json', JSON.stringify(dispo), (err) => {
         if (err) console.error(err);
     });
@@ -214,23 +224,21 @@ function joinCommand(sender, arguments, receivedMessage) {
     });
 }
 
-function unjoinCommand(sender, receivedMessage){
+function unjoinCommand(sender, arguments, receivedMessage){
 
-    i = 0
-    while (i < getLength(dispo)) {
-        if(dispo[i].userID == sender.id) {
-            dispo[i]["blocs"] = []
-            if(!(sender.id === "182206706292359168"))
-                dispo[i]["roles"] = []
-            break
-        }
-
-        i++
+    if(dispo[sender.id]["roles"].includes(arguments[0])){
+        let roleIndex = dispo[sender.id]["roles"].indexOf(arguments[0]);
+        dispo[sender.id]["roles"].splice(roleIndex,1);
     }
+
+    if(dispo[sender.id]["roles"].length <= 0){
+        delete dispo[sender.id];
+        receivedMessage.channel.send("<@"+sender.id+"> vous êtes désinscris")
+    }
+
     fs.writeFile('./dispo.json', JSON.stringify(dispo), (err) => {
         if (err) console.error(err);
     });
-    receivedMessage.channel.send("<@"+sender.id+"> vous êtes désinscris de tout les blocs pour tout les roles")
 }
 
 function startCommand(sender, receivedMessage) {
@@ -255,19 +263,19 @@ function stop() {
 }
 
 async function teamCombination(sender, bloc, receivedMessage) {
-    let listPlayers = []
-    let listRole = []
-    let listBloc = []
-    let i=0
-    while (i < getLength(dispo)) {
-        listPlayers.push(dispo[i]["userID"])
-        listRole.push(dispo[i]["roles"])
-        listBloc.push(dispo[i]["blocs"])
+    let listPlayers = [];
+    let listRole = [];
+    let listBloc = [];
+    let i=0;
+    for (let k in dispo) {
+        listPlayers.push(k)
+        listRole.push(dispo[k]["roles"])
+        listBloc.push(dispo[k]["blocs"])
         i++
     }
-    console.log(listPlayers)
-    console.log(listRole)
-    console.log(listBloc)
+    console.log("listPlayers",listPlayers)
+    console.log("listRole",listRole)
+    console.log("listBloc",listBloc)
     //trier tableau par role par rapport au nombre de participation
     let nbPlayers = 6
     let deuxTeams = {"players": [], "roles": []}
@@ -283,13 +291,12 @@ async function teamCombination(sender, bloc, receivedMessage) {
         .setFooter('Réalisé par Nikkunēmu', "https://static-cdn.jtvnw.net/jtv_user_pictures/607e201c-2891-48ca-8208-c57336956dcc-profile_image-70x70.png");
 
     while ( nbPlayers > 3){
-        console.log(deuxTeams)
-        console.log(deuxTeams.length)
+        console.log("deuxTeams",deuxTeams)
         if (deuxTeams["players"] != []) {
             presentPlayers = [].concat.apply([], deuxTeams["players"]);
-            console.log(presentPlayers);
+            console.log("presentPlayers",presentPlayers);
             presentRoles = [].concat.apply([], deuxTeams["roles"]);
-            console.log(presentRoles);
+            console.log("presentRoles",presentRoles);
         }
 
         if( deuxTeams["players"].length == 2)
@@ -311,19 +318,38 @@ async function teamCombination(sender, bloc, receivedMessage) {
             nbTotalPlayers += deuxTeams["roles"][j].length
         }
     }
-    let returnTxtpug = "Les convoqués pour le bloc "+ bloc +" sont : \n\n"
     if (nbTotalPlayers > 9 ){
         for (var x = 0; x < presentRoles.length; x++){
-            //returnTxtpug += "<@"+presentPlayers[x] + "> pour le role de " + presentRoles[x] + "\n"
-            let joueur = "<@"+presentPlayers[x] + ">";
+            let joueur = await client.users.fetch(presentPlayers[x]);
             let role = String(rolesEmoji[presentRoles[x]]);
-            messageEmbed.addField(name=joueur, value=role, inline=true)
+            messageEmbed.addField(name=joueur.username, value=role, inline=true)
         }
-        //returnTxtpug += "Nombre de joueurs appelées : " + nbTotalPlayers + "\n"
         messageEmbed.setDescription(text="Nombre de joueurs appelées : " + nbTotalPlayers)
         client.user.setActivity("Pugs lancé !")
-        //receivedMessage.channel.send(returnTxtpug)
         await receivedMessage.channel.send({ embeds: [messageEmbed] })
+
+        let txt = new Discord.MessageEmbed()
+            .setColor('#cd003b')
+            .setTitle('Joueurs en attente')
+            .setAuthor('Nikkunēmu', "https://static-cdn.jtvnw.net/jtv_user_pictures/607e201c-2891-48ca-8208-c57336956dcc-profile_image-70x70.png")
+            .setThumbnail('https://stockagehelloassoprod.blob.core.windows.net/images/logos/teki%20esport-9c35cdda328c4c8b9965e517ac642c11.png')
+            .setTimestamp()
+            .setFooter('Réalisé par Nikkunēmu', "https://static-cdn.jtvnw.net/jtv_user_pictures/607e201c-2891-48ca-8208-c57336956dcc-profile_image-70x70.png");
+        let nb_att = 0;
+        for (let j in listPlayers) {
+            if (!presentPlayers.includes(listPlayers[j])) {
+                nb_att++
+                let joueur = await client.users.fetch(listPlayers[j]);
+                let role = "";
+                for (let r in listRole[j])  {
+                    role += rolesEmoji[listRole[j][r]]
+                }
+                txt.addField(name=joueur.username, value=role, inline=true);
+
+            }
+        }
+        txt.setDescription(text="Nombre de joueurs en attente : " + nb_att)
+        await receivedMessage.channel.send({ embeds: [txt] })
 
     } else {
         let returnTxtpug = "";
@@ -421,7 +447,6 @@ function Backtracking(listPlayers, listRoles, listBloc, equipe, bloc, maxPlayers
         equipe["roles"].push(listRoles[i])
         solutionRole = isRoleMatchWithTeam(equipe["roles"])
         if ( !(playerAlreadyPicked(listPlayers[i],presentPlayers)) && canPlayBloc(bloc, listBloc[i]) && (solutionRole != [])) {
-            console.log("can? : "  + canPlayBloc(bloc, listBloc[i]))
             newListPlayers = removeA([...listPlayers],listPlayers[i])
             newListRoles = removeA([...listRoles],listRoles[i])
             newLlistBloc = removeA([...listBloc],listBloc[i])
@@ -455,9 +480,9 @@ async function listCommand(sender, receivedMessage) {
         .setThumbnail('https://stockagehelloassoprod.blob.core.windows.net/images/logos/teki%20esport-9c35cdda328c4c8b9965e517ac642c11.png')
         .setTimestamp()
         .setFooter('Réalisé par Nikkunēmu', "https://static-cdn.jtvnw.net/jtv_user_pictures/607e201c-2891-48ca-8208-c57336956dcc-profile_image-70x70.png");
-    while ( i < getLength(dispo) ) {
-        let user = await client.users.fetch(dispo[i]["userID"]);
-        let rolesUser = roleAffichageJolie(dispo[i]["roles"])
+    for (let k in dispo) {
+        let user = await client.users.fetch(k);
+        let rolesUser = roleAffichageJolie(dispo[k]["roles"])
         messageEmbed.addField(name=user.username, value=rolesUser, inline=true)
         i++
     }
